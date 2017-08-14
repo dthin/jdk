@@ -88,6 +88,9 @@ import java.util.function.Consumer;
  * @author Doug Lea
  * @author Martin Buchholz
  * @param <E> the type of elements held in this collection
+ *
+ *           无数量限制，迭代器是弱一致性
+ *           addAll，removeAll，retainAll，containsAll，equals和toArray不能保证以原子方式执行
  */
 public class ConcurrentLinkedDeque<E>
     extends AbstractCollection<E>
@@ -357,21 +360,21 @@ public class ConcurrentLinkedDeque<E>
         for (;;)
             for (Node<E> h = head, p = h, q;;) {
                 if ((q = p.prev) != null &&
-                    (q = (p = q).prev) != null)
+                    (q = (p = q).prev) != null)/**head 的prev*1，prev*2不为null   这一部分的逻辑是判断head之前是否有节点，如果有则表示这个head不是头结点，去U型你找头结点用p表示，但是值寻找到prev*2 */
                     // Check for head updates every other hop.
                     // If p == q, we are sure to follow head instead.
-                    p = (h != (h = head)) ? h : q;
-                else if (p.next == p) // PREV_TERMINATOR
+                    p = (h != (h = head)) ? h : q;/**如果此时其他线程插入了，更新head，为prev*2 ？？？为什么只判断到prev*2 */ //todo
+                else if (p.next == p) /** head->next=head */// PREV_TERMINATOR/
                     continue restartFromHead;
-                else {
+                else {/** head->next!=head 且head->prev==null*/
                     // p is first node
                     newNode.lazySetNext(p); // CAS piggyback
-                    if (p.casPrev(null, newNode)) {
+                    if (p.casPrev(null, newNode)) {/**相当于成功获取锁，如果为false表示他之前还有节点，上面判断到prev*n随意，反正这个没有通过，会重复找头结点*/
                         // Successful CAS is the linearization point
                         // for e to become an element of this deque,
                         // and for newNode to become "live".
                         if (p != h) // hop two nodes at a time
-                            casHead(h, newNode);  // Failure is OK.
+                            casHead(h, newNode); /**失败了也对插入没有问题，因为之间和连接关系已经处理完了*/ // Failure is OK.
                         return;
                     }
                     // Lost CAS race to another thread; re-read prev
@@ -550,7 +553,7 @@ public class ConcurrentLinkedDeque<E>
                 }
                 return;
             }
-            else if (p == q)
+            else if (p == q)/**next->next=next*/
                 return;
             else {
                 o = p;

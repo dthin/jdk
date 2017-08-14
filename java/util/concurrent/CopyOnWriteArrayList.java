@@ -92,6 +92,8 @@ import java.util.function.UnaryOperator;
  *           迭代器只支持查找
  *           数组或集合进行初始化，全部都copy一下
  *           返回子集时也是copy后返回
+ *           修改全都copy
+ *           因为它是用一个数组来存储的，并且保证数组是满的，不像其他例如vector是使用用一个数组和size来确定访问
  */
 public class CopyOnWriteArrayList<E>
     implements List<E>, RandomAccess, Cloneable, java.io.Serializable {

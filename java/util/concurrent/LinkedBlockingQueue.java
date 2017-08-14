@@ -133,10 +133,16 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         Node(E x) { item = x; }
     }
 
-    /** The capacity bound, or Integer.MAX_VALUE if none */
+    /** The capacity bound, or Integer.MAX_VALUE if none
+     *
+     *   最大容量，默认Integer.MAX_VALUE
+     * */
     private final int capacity;
 
-    /** Current number of elements */
+    /** Current number of elements
+     *
+     *   实际数量
+     * */
     private final AtomicInteger count = new AtomicInteger();
 
     /**
@@ -192,6 +198,8 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
 
     /**
      * Links node at end of queue.
+     *
+     *   加到队列尾
      *
      * @param node the node
      */
@@ -316,6 +324,11 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
      * an element will succeed by inspecting {@code remainingCapacity}
      * because it may be the case that another thread is about to
      * insert or remove an element.
+     *
+     *    不要依据这个去插入，因为复合操作是没有同步过的，例如
+     *    if(remainingCapacity()>){
+     *        add();
+     *    }
      */
     public int remainingCapacity() {
         return capacity - count.get();
@@ -336,7 +349,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         Node<E> node = new Node<E>(e);
         final ReentrantLock putLock = this.putLock;
         final AtomicInteger count = this.count;
-        putLock.lockInterruptibly();
+        putLock.lockInterruptibly();/**可以打断*/
         try {
             /*
              * Note that count is used in wait guard even though it is
@@ -346,7 +359,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
              * signalled if it ever changes from capacity. Similarly
              * for all other uses of count in other wait guards.
              */
-            while (count.get() == capacity) {
+            while (count.get() == capacity) {/**如果满了则等待*/
                 notFull.await();
             }
             enqueue(node);
