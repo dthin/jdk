@@ -78,6 +78,10 @@ import java.util.Spliterator;
  * @since 1.5
  * @author Doug Lea
  * @param <E> the type of elements held in this collection
+ *
+ *           数组一旦被创建则不能被修改
+ *           缓冲区为空时取出操作将阻塞，同理，缓冲区满时，插入操作将被阻塞
+ *
  */
 public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         implements BlockingQueue<E>, java.io.Serializable {
@@ -93,13 +97,25 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
     /** The queued items */
     final Object[] items;
 
-    /** items index for next take, poll, peek or remove */
+    /** items index for next take, poll, peek or remove
+     *
+     * 取出的index
+     *
+     * */
     int takeIndex;
 
-    /** items index for next put, offer, or add */
+
+    /** items index for next put, offer, or add
+     *
+     *  插入的index
+     *
+     * */
     int putIndex;
 
-    /** Number of elements in the queue */
+    /** Number of elements in the queue
+     *
+     *   实际数量
+     * */
     int count;
 
     /*
@@ -144,6 +160,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      * Throws NullPointerException if argument is null.
      *
      * @param v the element
+     *
+     *
      */
     private static void checkNotNull(Object v) {
         if (v == null)
@@ -159,7 +177,7 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
         // assert items[putIndex] == null;
         final Object[] items = this.items;
         items[putIndex] = x;
-        if (++putIndex == items.length)
+        if (++putIndex == items.length)/**如果缓冲区满了之后，设置插入index为0*/
             putIndex = 0;
         count++;
         notEmpty.signal();
@@ -248,6 +266,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      *        on insertion or removal, are processed in FIFO order;
      *        if {@code false} the access order is unspecified.
      * @throws IllegalArgumentException if {@code capacity < 1}
+     *
+     *    fail，公平锁(true)
      */
     public ArrayBlockingQueue(int capacity, boolean fair) {
         if (capacity <= 0)
@@ -307,6 +327,9 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      * @return {@code true} (as specified by {@link Collection#add})
      * @throws IllegalStateException if this queue is full
      * @throws NullPointerException if the specified element is null
+     *
+     *    如果满了则抛出IllegalStateException
+     *
      */
     public boolean add(E e) {
         return super.add(e);
@@ -320,6 +343,8 @@ public class ArrayBlockingQueue<E> extends AbstractQueue<E>
      * which can fail to insert an element only by throwing an exception.
      *
      * @throws NullPointerException if the specified element is null
+     *
+     *   同上只不过当队列已满时没有抛出异常
      */
     public boolean offer(E e) {
         checkNotNull(e);

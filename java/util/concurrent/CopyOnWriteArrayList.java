@@ -527,6 +527,8 @@ public class CopyOnWriteArrayList<E>
      *
      * @param o element to be removed from this list, if present
      * @return {@code true} if this list contained the specified element
+     *
+     *   如果存在则删除第一个，否则返回false
      */
     public boolean remove(Object o) {
         Object[] snapshot = getArray();
@@ -614,6 +616,8 @@ public class CopyOnWriteArrayList<E>
      *
      * @param e element to be added to this list, if absent
      * @return {@code true} if the element was added
+     *
+     *   如果不存在则添加
      */
     public boolean addIfAbsent(E e) {
         Object[] snapshot = getArray();

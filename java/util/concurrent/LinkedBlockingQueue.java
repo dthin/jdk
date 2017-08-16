@@ -76,6 +76,12 @@ import java.util.function.Consumer;
  * @since 1.5
  * @author Doug Lea
  * @param <E> the type of elements held in this collection
+ *
+ *           put是一直等待
+ *           offer有两个，指定时间的等待，和不等待直接返回false
+ *              先进先出队列，链表
+ *           同样的take
+ *        poll(time) ,poll
  */
 public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         implements BlockingQueue<E>, java.io.Serializable {
@@ -213,6 +219,8 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
      * Removes a node from head of queue.
      *
      * @return the node
+     *
+     *   出队列
      */
     private E dequeue() {
         // assert takeLock.isHeldByCurrentThread();
@@ -326,7 +334,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
      * insert or remove an element.
      *
      *    不要依据这个去插入，因为复合操作是没有同步过的，例如
-     *    if(remainingCapacity()>){
+     *    if(remainingCapacity()>0){
      *        add();
      *    }
      */
@@ -365,11 +373,11 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
             enqueue(node);
             c = count.getAndIncrement();
             if (c + 1 < capacity)
-                notFull.signal();
+                notFull.signal();/**是为了唤醒上面notFull.await();*/
         } finally {
             putLock.unlock();
         }
-        if (c == 0)
+        if (c == 0)/**原来为空，刚插入一个，会唤醒使用的线程*/
             signalNotEmpty();
     }
 
@@ -392,7 +400,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         final AtomicInteger count = this.count;
         putLock.lockInterruptibly();
         try {
-            while (count.get() == capacity) {
+            while (count.get() == capacity) {/**如果满了等待指定时间，还满直接返回false*/
                 if (nanos <= 0)
                     return false;
                 nanos = notFull.awaitNanos(nanos);
@@ -428,7 +436,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         int c = -1;
         Node<E> node = new Node<E>(e);
         final ReentrantLock putLock = this.putLock;
-        putLock.lock();
+        putLock.lock();/**不能打断*/
         try {
             if (count.get() < capacity) {
                 enqueue(node);
@@ -441,7 +449,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         }
         if (c == 0)
             signalNotEmpty();
-        return c >= 0;
+        return c >= 0;/**返回的是容量是否大于0*/
     }
 
     public E take() throws InterruptedException {
@@ -532,6 +540,8 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
 
     /**
      * Unlinks interior Node p with predecessor trail.
+     *
+     *  删除p，trail为p.prov
      */
     void unlink(Node<E> p, Node<E> trail) {
         // assert isFullyLocked();
@@ -555,6 +565,8 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
      *
      * @param o element to be removed from this queue, if present
      * @return {@code true} if this queue changed as a result of the call
+     *
+     *   删除指定元素，只删除第一个
      */
     public boolean remove(Object o) {
         if (o == null) return false;
@@ -765,12 +777,12 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
                 if (i > 0) {
                     // assert h.item == null;
                     head = h;
-                    signalNotFull = (count.getAndAdd(-i) == capacity);
+                    signalNotFull = (count.getAndAdd(-i) == capacity);/**如果他原来正好等于容量的话，现在就已经空了*/
                 }
             }
         } finally {
             takeLock.unlock();
-            if (signalNotFull)
+            if (signalNotFull)/**唤醒添加的线程*/
                 signalNotFull();
         }
     }
@@ -783,6 +795,8 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
      * <a href="package-summary.html#Weakly"><i>weakly consistent</i></a>.
      *
      * @return an iterator over the elements in this queue in proper sequence
+     *
+     *   返回的迭代器是弱一致性
      */
     public Iterator<E> iterator() {
         return new Itr();
@@ -824,11 +838,11 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
         private Node<E> nextNode(Node<E> p) {
             for (;;) {
                 Node<E> s = p.next;
-                if (s == p)
+                if (s == p)/**已经被去掉的节点*/
                     return head.next;
-                if (s == null || s.item != null)
+                if (s == null || s.item != null)/**S不等于null，且s.item不等于null，或则s等于null，直接返回*/
                     return s;
-                p = s;
+                p = s;/**s!=null且s.item=null 表明已经删除了,继续寻找下一个*/  //todo 为什么表明已经删除了
             }
         }
 
@@ -856,7 +870,7 @@ public class LinkedBlockingQueue<E> extends AbstractQueue<E>
                 lastRet = null;
                 for (Node<E> trail = head, p = trail.next;
                      p != null;
-                     trail = p, p = p.next) {
+                     trail = p, p = p.next) {/**如果找到则删除，没有表示已经删除了*/
                     if (p == node) {
                         unlink(p, trail);
                         break;
